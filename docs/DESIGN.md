@@ -193,6 +193,8 @@ BriefingRun 1───1 EmailDeliveryLog
 TechTopicCatalog (독립 마스터 테이블, 시딩용)
 ```
 
+> **구현 노트 (Phase 0에서 확정)**: 실제 설치된 Prisma는 v7 계열이며, 이 버전부터 `PrismaClient`가 런타임에 단순 `DATABASE_URL` 문자열만으로는 초기화되지 않고 **Driver Adapter**(예: `@prisma/adapter-pg`)를 명시적으로 요구한다. `schema.prisma`의 `datasource` 블록에는 더 이상 `url = env(...)`를 두지 않고, `src/lib/db/prisma.ts`에서 `new PrismaPg(env.DATABASE_URL)`로 어댑터를 만들어 `new PrismaClient({ adapter })`에 주입한다. CLI(`migrate`/`studio`)용 연결 정보는 `prisma.config.ts`에 별도로 둔다. 아래 스키마 자체는 그대로 유효하다.
+
 ### 3.2 Prisma 스키마 (설계 초안, 코드 아님 — 구현 시 기준 문서)
 
 ```prisma

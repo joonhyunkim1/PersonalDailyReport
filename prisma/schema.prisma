@@ -1,0 +1,184 @@
+// Prisma schema for the Daily Briefing AI Assistant
+// See docs/DESIGN.md section 3 for the full design rationale.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  timezone     String   @default("Asia/Seoul")
+  deliveryHour Int      @default(8)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  briefingRuns         BriefingRun[]
+  codingProblemHistory CodingProblemHistory[]
+  techTopicHistory     TechTopicHistory[]
+  techTopicProgress    TechTopicProgress[]
+  newsArticlesSeen     NewsArticleSeen[]
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+model BriefingRun {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  runDate        DateTime  @db.Date
+  status         RunStatus @default(PENDING)
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  totalCostUsd   Decimal   @default(0) @db.Decimal(10, 6)
+  emailMessageId String?
+  errorSummary   String?
+
+  sections         BriefingSection[]
+  emailDeliveryLog EmailDeliveryLog?
+
+  @@unique([userId, runDate])
+  @@index([status])
+}
+
+enum SectionType {
+  CODING_TEST
+  TECH_CONCEPT
+  INTERVIEW
+  AI_NEWS
+  JOB_MARKET
+  SEMICONDUCTOR
+  STOCK_MARKET
+}
+
+enum SectionStatus {
+  SUCCESS
+  FALLBACK
+  ERROR
+}
+
+model BriefingSection {
+  id           String        @id @default(cuid())
+  runId        String
+  run          BriefingRun   @relation(fields: [runId], references: [id])
+  sectionType  SectionType
+  status       SectionStatus
+  contentJson  Json
+  tokensInput  Int           @default(0)
+  tokensOutput Int           @default(0)
+  costUsd      Decimal       @default(0) @db.Decimal(10, 6)
+  retryCount   Int           @default(0)
+  errorMessage String?
+  createdAt    DateTime      @default(now())
+
+  @@index([runId, sectionType])
+}
+
+model CodingProblemHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  problemName String
+  platform    String
+  difficulty  String
+  topicTag    String
+  sentAt      DateTime @default(now())
+
+  @@index([userId, sentAt])
+  @@index([userId, problemName])
+}
+
+enum TopicLevel {
+  BASIC
+  INTERMEDIATE
+  ADVANCED
+}
+
+model TechTopicCatalog {
+  id       String  @id @default(cuid())
+  category String
+  topic    String  @unique
+  priority Int     @default(0)
+  isActive Boolean @default(true)
+}
+
+/// "언제 무엇을 몇 레벨로 보냈는가"의 append-only 로그. 감사/복습 기능용.
+model TechTopicHistory {
+  id       String     @id @default(cuid())
+  userId   String
+  user     User       @relation(fields: [userId], references: [id])
+  category String
+  topic    String
+  level    TopicLevel
+  sentAt   DateTime   @default(now())
+
+  interviewQuestions InterviewQuestionHistory[]
+
+  @@index([userId, sentAt])
+  @@index([userId, topic])
+}
+
+/// "이 주제를 지금 어디까지 학습했는가"의 최신 상태 하나. 선정 로직이 조회하는 소스.
+model TechTopicProgress {
+  id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id])
+  topic          String
+  category       String
+  currentLevel   TopicLevel @default(BASIC)
+  timesCovered   Int        @default(0)
+  lastSentAt     DateTime?
+  nextEligibleAt DateTime?
+
+  @@unique([userId, topic])
+  @@index([userId, currentLevel])
+  @@index([userId, nextEligibleAt])
+}
+
+model InterviewQuestionHistory {
+  id                 String           @id @default(cuid())
+  techTopicHistoryId String
+  techTopicHistory   TechTopicHistory @relation(fields: [techTopicHistoryId], references: [id])
+  question           String
+  level              TopicLevel
+  sentAt             DateTime         @default(now())
+}
+
+model NewsArticleSeen {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  urlHash    String
+  sourceType SectionType
+  seenAt     DateTime    @default(now())
+
+  @@unique([userId, urlHash])
+  @@index([userId, sourceType, seenAt])
+}
+
+model EmailDeliveryLog {
+  id         String      @id @default(cuid())
+  runId      String      @unique
+  run        BriefingRun @relation(fields: [runId], references: [id])
+  provider   String      @default("resend")
+  messageId  String?
+  event      String?
+  rawPayload Json?
+  updatedAt  DateTime    @updatedAt
+}
+
+model SystemConfig {
+  key   String @id
+  value String
+}
