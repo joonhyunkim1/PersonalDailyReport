@@ -1,0 +1,44 @@
+# Secrets / environment variables
+.env
+.env*.local
+.env.development
+.env.production
+.env.test
+!.env.example
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+
+# Production build
+/build
+/dist
+
+# Vercel
+.vercel
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
