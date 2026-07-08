@@ -1,29 +1,42 @@
 import type { TechConceptContent } from "@/types/briefing";
-import type { ModuleResult, SectionModule } from "@/lib/modules/types";
+import type { ModuleContext, ModuleResult, SectionModule } from "@/lib/modules/types";
+import { generateStructured } from "@/lib/openai/responses";
+import { TechConceptSchema } from "@/lib/openai/schemas/techConcept.schema";
+import { MODELS } from "@/lib/openai/client";
+import { TECH_TOPIC_CATALOG } from "@/lib/config/topicCatalog";
 
-// Phase 1 stub: static placeholder content. Real level-progression selection
-// (TechTopicProgress-driven, see docs/DESIGN.md section 3.4) lands in Phase 4.
+const INSTRUCTIONS = `당신은 "오늘의 전공 지식" 섹션을 작성합니다. 이 섹션은 면접 대비용 학습 노트 형태여야 하며,
+단순한 정의 나열이 아니라 왜 등장했는지/장단점/실제 활용 사례/다른 기술과의 비교까지 포함해야 합니다.
+
+아래 카탈로그에서 오늘 다룰 주제 딱 하나를 선택하세요:
+${Object.entries(TECH_TOPIC_CATALOG)
+  .map(([category, topics]) => `- ${category}: ${topics.join(", ")}`)
+  .join("\n")}
+
+오늘은 BASIC 레벨(핵심 개념 정의, 등장 배경, 직관적 이해 수준)로 작성하세요.
+각 필드는 한국어로 2~4문장 내외로 작성하세요.`;
+
+// Phase 2: real OpenAI generation (no web_search — relies on the model's
+// own knowledge). Topic selection is a static catalog pick for now; the
+// history-aware level-progression selection (docs/DESIGN.md section 3.4)
+// lands in Phase 4.
 export const techConceptModule: SectionModule<TechConceptContent> = {
   type: "TECH_CONCEPT",
-  async generate(): Promise<ModuleResult<TechConceptContent>> {
+  async generate(_ctx: ModuleContext): Promise<ModuleResult<TechConceptContent>> {
+    const result = await generateStructured<TechConceptContent>({
+      model: MODELS.reasoning,
+      schema: TechConceptSchema,
+      schemaName: "tech_concept",
+      instructions: INSTRUCTIONS,
+      input: "오늘의 전공 지식 노트를 작성해주세요.",
+    });
+
     return {
       status: "SUCCESS",
-      tokensInput: 0,
-      tokensOutput: 0,
-      costUsd: 0,
-      content: {
-        topic: "Batch Normalization",
-        category: "Deep Learning",
-        level: "BASIC",
-        coreConcept:
-          "각 미니배치의 활성화 값을 평균 0, 분산 1로 정규화한 뒤 학습 가능한 scale/shift 파라미터를 적용하는 기법입니다.",
-        background:
-          "레이어가 깊어질수록 이전 레이어의 파라미터 변화가 다음 레이어 입력 분포를 계속 바꾸는 internal covariate shift 문제로 학습이 불안정해지는 것을 완화하기 위해 등장했습니다.",
-        pros: "학습 속도 향상, 더 큰 learning rate 사용 가능, 약한 정규화 효과",
-        cons: "작은 배치 크기에서 통계량이 불안정, 학습/추론 시 동작 방식이 달라 구현 복잡도 증가",
-        useCase: "CNN 기반 이미지 분류 모델(ResNet 등)의 표준 구성 요소",
-        comparison: "Layer Norm은 배치 크기에 의존하지 않아 Transformer 계열에서 더 널리 쓰입니다.",
-      },
+      tokensInput: result.tokensInput,
+      tokensOutput: result.tokensOutput,
+      costUsd: result.costUsd,
+      content: result.content,
     };
   },
 };
