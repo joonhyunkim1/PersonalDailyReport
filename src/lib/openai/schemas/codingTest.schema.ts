@@ -5,7 +5,7 @@ export const CodingTestSchema = z.object({
     .array(
       z.object({
         name: z.string(),
-        platform: z.string(),
+        platform: z.literal("프로그래머스"),
         difficulty: z.string(),
         reason: z.string(),
         learningPoint: z.string(),

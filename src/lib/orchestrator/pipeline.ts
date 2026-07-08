@@ -2,8 +2,8 @@ import { codingTestModule } from "@/lib/modules/codingTest";
 import { techConceptModule } from "@/lib/modules/techConcept";
 import { interviewModule } from "@/lib/modules/interview";
 import { aiNewsModule } from "@/lib/modules/aiNews";
-import { jobMarketModule } from "@/lib/modules/jobMarket";
-import { semiconductorModule } from "@/lib/modules/semiconductor";
+// jobMarketModule: paused (not called) — kept in lib/modules/jobMarket for
+// future reuse. See docs/DESIGN.md section 13.2 (interest customization).
 import { stockMarketModule } from "@/lib/modules/stockMarket";
 import type { ModuleContext, ModuleResult, SectionType } from "@/lib/modules/types";
 
@@ -24,13 +24,7 @@ export async function runPipeline(ctx: ModuleContext): Promise<SectionRunResult[
     upstream: { TECH_CONCEPT: techConceptResult.content },
   });
 
-  const independentModules = [
-    codingTestModule,
-    aiNewsModule,
-    jobMarketModule,
-    semiconductorModule,
-    stockMarketModule,
-  ] as const;
+  const independentModules = [codingTestModule, aiNewsModule, stockMarketModule] as const;
 
   const independentResults = await Promise.all(
     independentModules.map((mod) => mod.generate(ctx))

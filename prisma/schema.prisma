@@ -56,9 +56,8 @@ enum SectionType {
   CODING_TEST
   TECH_CONCEPT
   INTERVIEW
-  AI_NEWS
-  JOB_MARKET
-  SEMICONDUCTOR
+  AI_NEWS // "AI / 임베디드 뉴스" — merged with the former SEMICONDUCTOR section
+  JOB_MARKET // paused: not called by the pipeline for now, kept for future reuse
   STOCK_MARKET
 }
 

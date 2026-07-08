@@ -14,9 +14,9 @@ import { CodingTestSection } from "@/lib/email/templates/sections/CodingTestSect
 import { TechConceptSection } from "@/lib/email/templates/sections/TechConceptSection";
 import { InterviewSection } from "@/lib/email/templates/sections/InterviewSection";
 import { AiNewsSection } from "@/lib/email/templates/sections/AiNewsSection";
-import { JobMarketSection } from "@/lib/email/templates/sections/JobMarketSection";
-import { SemiconductorSection } from "@/lib/email/templates/sections/SemiconductorSection";
 import { StockMarketSection } from "@/lib/email/templates/sections/StockMarketSection";
+// JobMarketSection: paused (not rendered) — kept for future reuse, see
+// lib/modules/jobMarket.
 import type { BriefingJSON } from "@/types/briefing";
 
 export function DailyBriefingEmail({ briefing }: { briefing: BriefingJSON }) {
@@ -57,16 +57,8 @@ export function DailyBriefingEmail({ briefing }: { briefing: BriefingJSON }) {
             <InterviewSection content={briefing.sections.interview} />
           </SectionCard>
 
-          <SectionCard emoji="🤖" title="AI / Computer Vision 뉴스" accentColor="#059669">
+          <SectionCard emoji="🤖" title="AI / 임베디드 뉴스" accentColor="#059669">
             <AiNewsSection content={briefing.sections.aiNews} />
-          </SectionCard>
-
-          <SectionCard emoji="💼" title="취업 정보" accentColor="#d97706">
-            <JobMarketSection content={briefing.sections.jobMarket} />
-          </SectionCard>
-
-          <SectionCard emoji="🔩" title="반도체 / 임베디드 뉴스" accentColor="#0891b2">
-            <SemiconductorSection content={briefing.sections.semiconductor} />
           </SectionCard>
 
           <SectionCard emoji="📈" title="미국 증시 브리핑" accentColor="#dc2626">

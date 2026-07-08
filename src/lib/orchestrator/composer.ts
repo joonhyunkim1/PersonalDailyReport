@@ -5,8 +5,6 @@ import type {
   BriefingSections,
   CodingTestContent,
   InterviewContent,
-  JobMarketContent,
-  SemiconductorContent,
   StockMarketContent,
   TechConceptContent,
 } from "@/types/briefing";
@@ -33,15 +31,13 @@ export function composeBriefing(
     techConcept: findContent<TechConceptContent>(results, "TECH_CONCEPT"),
     interview: findContent<InterviewContent>(results, "INTERVIEW"),
     aiNews: findContent<AiNewsContent>(results, "AI_NEWS"),
-    jobMarket: findContent<JobMarketContent>(results, "JOB_MARKET"),
-    semiconductor: findContent<SemiconductorContent>(results, "SEMICONDUCTOR"),
     stockMarket: findContent<StockMarketContent>(results, "STOCK_MARKET"),
   };
 
   const tldr = [
     `오늘의 전공지식: ${sections.techConcept.topic} (${sections.techConcept.level})`,
     `코딩테스트 추천 ${sections.codingTest.problems.length}문제`,
-    `AI/CV 뉴스 ${sections.aiNews.items.length}건 정리`,
+    `AI/임베디드 뉴스 ${sections.aiNews.items.length}건 정리`,
   ];
 
   const subject = `🧠 [Daily Briefing] ${dateLabel} — 오늘의 핵심: ${sections.techConcept.topic}`;

@@ -11,8 +11,8 @@ export const AiNewsSchema = z.object({
         engineerView: z.string(),
       })
     )
-    .min(1)
-    .max(3),
+    .min(3)
+    .max(5),
 });
 
 export type AiNewsSchemaType = z.infer<typeof AiNewsSchema>;

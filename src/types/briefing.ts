@@ -46,10 +46,15 @@ export interface NewsItem {
   sourceUrl?: string;
 }
 
+// "AI / 임베디드 뉴스" — merged from the former separate AI/CV news and
+// 반도체/임베디드 뉴스 sections (AI is a superset of CV, and embedded news
+// matches the user's major more directly than general semiconductor news).
 export interface AiNewsContent {
   items: NewsItem[];
 }
 
+// Reserved: JOB_MARKET is currently paused (not called by the pipeline,
+// not rendered in the email) but kept for future reuse.
 export interface JobListing {
   company: string;
   role: string;
@@ -59,18 +64,6 @@ export interface JobListing {
 
 export interface JobMarketContent {
   items: JobListing[];
-}
-
-export interface SemiconductorItem {
-  title: string;
-  summary: string;
-  industryImpact: string;
-  aiEngineerImpact: string;
-  sourceUrl?: string;
-}
-
-export interface SemiconductorContent {
-  items: SemiconductorItem[];
 }
 
 export interface StockMarketContent {
@@ -85,8 +78,6 @@ export interface BriefingSections {
   techConcept: TechConceptContent;
   interview: InterviewContent;
   aiNews: AiNewsContent;
-  jobMarket: JobMarketContent;
-  semiconductor: SemiconductorContent;
   stockMarket: StockMarketContent;
 }
 
