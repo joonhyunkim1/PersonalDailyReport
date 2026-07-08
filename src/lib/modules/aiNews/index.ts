@@ -4,6 +4,7 @@ import { researchWithWebSearch } from "@/lib/openai/webSearch";
 import { generateStructured } from "@/lib/openai/responses";
 import { AiNewsSchema } from "@/lib/openai/schemas/aiNews.schema";
 import { MODELS } from "@/lib/openai/client";
+import { getRecentAiNewsTitles } from "@/lib/dedup/aiNewsHistory";
 
 // "AI / 임베디드 뉴스" — merged from the former separate AI/CV news and
 // 반도체/임베디드 뉴스 sections (AI is a superset of CV, and embedded news
@@ -30,9 +31,15 @@ const STRUCTURE_INSTRUCTIONS = `아래는 "AI / 임베디드 뉴스" 섹션을 �
 // structures that text into the section's JSON schema.
 export const aiNewsModule: SectionModule<AiNewsContent> = {
   type: "AI_NEWS",
-  async generate(_ctx: ModuleContext): Promise<ModuleResult<AiNewsContent>> {
+  async generate(ctx: ModuleContext): Promise<ModuleResult<AiNewsContent>> {
+    const recentTitles = await getRecentAiNewsTitles(ctx.userId);
+    const researchInstructions =
+      recentTitles.length > 0
+        ? `${RESEARCH_INSTRUCTIONS}\n\n최근 7일간 이미 다룬 기사(아래 제목들)와 겹치지 않는 새로운 소식 위주로 찾으세요: ${recentTitles.join(" | ")}`
+        : RESEARCH_INSTRUCTIONS;
+
     const research = await researchWithWebSearch({
-      instructions: RESEARCH_INSTRUCTIONS,
+      instructions: researchInstructions,
       input: "오늘의 AI/임베디드 뉴스를 리서치해주세요.",
     });
 

@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       });
 
   try {
-    const sectionResults = await runPipeline({ today: dateLabel });
+    const sectionResults = await runPipeline({ today: dateLabel, userId: user.id });
     const briefing = composeBriefing(run.id, dateLabel, sectionResults);
     const email = await renderBriefingEmail(briefing);
 

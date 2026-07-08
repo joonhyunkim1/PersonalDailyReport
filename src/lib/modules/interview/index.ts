@@ -3,6 +3,7 @@ import type { ModuleContext, ModuleResult, SectionModule } from "@/lib/modules/t
 import { generateStructured } from "@/lib/openai/responses";
 import { InterviewSchema } from "@/lib/openai/schemas/interview.schema";
 import { MODELS } from "@/lib/openai/client";
+import { recordInterviewQuestions } from "@/lib/dedup/interviewQuestion";
 
 const LEVEL_GUIDANCE: Record<string, string> = {
   BASIC: "개념 확인형 질문 위주로 작성하세요 (예: '~란 무엇인가', '~가 왜 필요한가').",
@@ -22,6 +23,9 @@ export const interviewModule: SectionModule<InterviewContent> = {
     if (!techConcept) {
       throw new Error("INTERVIEW module requires TECH_CONCEPT output in ctx.upstream");
     }
+    const techConceptMeta = ctx.upstream?.TECH_CONCEPT_META as
+      | { techTopicHistoryId?: string }
+      | undefined;
 
     const instructions = `당신은 "면접 대비" 섹션을 작성합니다. 아래 오늘의 전공 지식 노트와 연결된
 예상 면접 질문 3~5개를 만드세요. 각 질문에는 모범 답변과 추가 꼬리 질문을 포함하세요.
@@ -39,6 +43,14 @@ ${LEVEL_GUIDANCE[techConcept.level] ?? LEVEL_GUIDANCE.BASIC}`;
       instructions,
       input: "면접 예상 질문과 모범 답변을 작성해주세요.",
     });
+
+    if (techConceptMeta?.techTopicHistoryId) {
+      await recordInterviewQuestions(
+        techConceptMeta.techTopicHistoryId,
+        techConcept.level,
+        result.content.questions
+      );
+    }
 
     return {
       status: "SUCCESS",

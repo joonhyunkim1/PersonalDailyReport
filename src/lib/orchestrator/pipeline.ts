@@ -21,7 +21,10 @@ export async function runPipeline(ctx: ModuleContext): Promise<SectionRunResult[
 
   const interviewResult = await interviewModule.generate({
     ...ctx,
-    upstream: { TECH_CONCEPT: techConceptResult.content },
+    upstream: {
+      TECH_CONCEPT: techConceptResult.content,
+      TECH_CONCEPT_META: techConceptResult.meta,
+    },
   });
 
   const independentModules = [codingTestModule, aiNewsModule, stockMarketModule] as const;
