@@ -7,7 +7,10 @@ export function CodingTestSection({ content }: { content: CodingTestContent }) {
     <>
       {content.problems.map((p, i) => (
         <div key={i}>
-          <Text style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: "0 0 4px 0" }}>
+          <Text
+            className="db-card-title"
+            style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: "0 0 4px 0" }}
+          >
             {p.name} · {p.platform} · {p.difficulty}
           </Text>
           <Field label="추천 이유:" value={p.reason} />

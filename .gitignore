@@ -44,3 +44,7 @@ Thumbs.db
 *.tsbuildinfo
 
 /src/generated/prisma
+
+# Local design-review exports (PDF etc.) and react-email's build cache
+/exports
+/.react-email

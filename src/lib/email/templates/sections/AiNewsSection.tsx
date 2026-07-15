@@ -7,7 +7,10 @@ export function AiNewsSection({ content }: { content: AiNewsContent }) {
     <>
       {content.items.map((item, i) => (
         <div key={i}>
-          <Text style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: "0 0 4px 0" }}>
+          <Text
+            className="db-card-title"
+            style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: "0 0 4px 0" }}
+          >
             {item.title}
           </Text>
           <Field label="핵심 요약:" value={item.summary} />

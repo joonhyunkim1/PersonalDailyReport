@@ -11,6 +11,7 @@ interface SectionCardProps {
 export function SectionCard({ emoji, title, accentColor, children }: SectionCardProps) {
   return (
     <Section
+      className="db-card"
       style={{
         backgroundColor: "#ffffff",
         border: "1px solid #e5e7eb",
@@ -22,6 +23,7 @@ export function SectionCard({ emoji, title, accentColor, children }: SectionCard
     >
       <Heading
         as="h2"
+        className="db-card-title"
         style={{ fontSize: "16px", margin: "0 0 12px 0", color: "#111827" }}
       >
         {emoji} {title}

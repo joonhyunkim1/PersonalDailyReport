@@ -7,7 +7,10 @@ export function InterviewSection({ content }: { content: InterviewContent }) {
     <>
       {content.questions.map((q, i) => (
         <div key={i}>
-          <Text style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: "0 0 4px 0" }}>
+          <Text
+            className="db-card-title"
+            style={{ fontSize: "14px", fontWeight: 600, color: "#111827", margin: "0 0 4px 0" }}
+          >
             Q. {q.question}
           </Text>
           <Field label="모범 답변:" value={q.answer} />

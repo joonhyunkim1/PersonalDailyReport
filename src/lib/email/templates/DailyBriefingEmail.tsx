@@ -19,14 +19,38 @@ import { StockMarketSection } from "@/lib/email/templates/sections/StockMarketSe
 // lib/modules/jobMarket.
 import type { BriefingJSON } from "@/types/briefing";
 
+// Email clients apply dark mode via the OS/client theme regardless of our
+// inline styles, so light-colored text-on-white cards can go
+// unreadable/washed out unless we explicitly override with a media-query
+// style block. Inline styles remain the light-mode (and non-dark-mode-aware
+// client) baseline; the classNames below are pure hooks for this block.
+const DARK_MODE_STYLE = `
+@media (prefers-color-scheme: dark) {
+  .db-body { background-color: #0b0f19 !important; }
+  .db-heading { color: #f3f4f6 !important; }
+  .db-card { background-color: #161b26 !important; border-color: #2a3140 !important; }
+  .db-card-title { color: #f3f4f6 !important; }
+  .db-field-text { color: #cbd5e1 !important; }
+  .db-field-text strong { color: #f3f4f6 !important; }
+  .db-muted { color: #6b7280 !important; }
+}
+`;
+
 export function DailyBriefingEmail({ briefing }: { briefing: BriefingJSON }) {
   return (
     <Html>
-      <Head />
+      <Head>
+        <meta name="color-scheme" content="light dark" />
+        <meta name="supported-color-schemes" content="light dark" />
+        <style>{DARK_MODE_STYLE}</style>
+      </Head>
       <Preview>{briefing.tldr.join(" · ")}</Preview>
-      <Body style={{ backgroundColor: "#f3f4f6", fontFamily: "Helvetica, Arial, sans-serif" }}>
+      <Body
+        className="db-body"
+        style={{ backgroundColor: "#f3f4f6", fontFamily: "Helvetica, Arial, sans-serif" }}
+      >
         <Container style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 16px" }}>
-          <Heading as="h1" style={{ fontSize: "20px", color: "#111827" }}>
+          <Heading as="h1" className="db-heading" style={{ fontSize: "20px", color: "#111827" }}>
             🧠 Daily Briefing — {briefing.dateLabel}
           </Heading>
 
@@ -66,7 +90,10 @@ export function DailyBriefingEmail({ briefing }: { briefing: BriefingJSON }) {
           </SectionCard>
 
           <Hr style={{ margin: "20px 0" }} />
-          <Text style={{ fontSize: "11px", color: "#9ca3af", textAlign: "center" }}>
+          <Text
+            className="db-muted"
+            style={{ fontSize: "11px", color: "#9ca3af", textAlign: "center" }}
+          >
             Daily Briefing AI Assistant · 개인용 MVP
           </Text>
         </Container>

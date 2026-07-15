@@ -1,12 +1,12 @@
 # 진행 상황 (Progress Log)
 
-> 마지막 업데이트: 2026-07-08
+> 마지막 업데이트: 2026-07-15
 > 목적: 다음 세션에서 컨텍스트 없이도 바로 이어서 작업할 수 있도록 현재 상태를 기록한다.
 > 설계 배경/원 설계는 `docs/DESIGN.md` 참고 (단, 아래 §2 변경사항 이후로는 이 문서가 더 최신 상태다).
 
 ---
 
-## 1. 완료된 작업 (Phase 0~4)
+## 1. 완료된 작업 (Phase 0~4, 그리고 Phase 3 진행 중)
 
 | Phase | 내용 | 커밋 |
 |---|---|---|
@@ -18,6 +18,7 @@
 | 2 | AI_NEWS/JOB_MARKET/SEMICONDUCTOR/STOCK_MARKET 실제 생성 (2-pass web_search) | `04ab52f` |
 | 2.5 | 사용자 피드백 반영: 섹션 통합·축소 (아래 §2 참고) | `2306022` |
 | 4 | 중복방지 + 전공지식 수준별(BASIC→INTERMEDIATE→ADVANCED) 진행 로직 | `dd9aabf` |
+| 3 | 이메일 디자인 도구(fixture/프리뷰서버/PDF 추출) + 다크모드 대응 | 이번 세션 |
 
 현재 `main` 브랜치는 로컬/원격(`origin/main`) 완전히 동기화된 상태, working tree clean.
 
@@ -95,16 +96,27 @@
 `docs/DESIGN.md` §12 로드맵 기준:
 
 - **Phase 5: 신뢰성 강화** — 모듈 실패 시 재시도/fallback, Watchdog(크론이 조용히 실패하는 것 감지), 구조화 로깅, `DRY_RUN` 모드는 이미 있음.
-- **Phase 3: 이메일 디자인 완성도** — 아직 미착수. 모바일/다크모드 대응, 제목/TL;DR을 AI가 직접 생성하도록 개선(현재는 템플릿 문자열로 조립).
+- **Phase 3: 이메일 디자인 완성도** — **진행 중.** 아래 §10 참고.
 - **Phase 6: 실사용 검증** — 2주 이상 실제 매일 수신 후 톤/분량 튜닝.
-
-지난 세션 마지막에 사용자에게 "Phase 5로 갈지, 실제 발송 확인부터 할지"를 물었고, 사용자는 "실제 발송은 안 해도 됨, 오늘은 여기까지, 진행 상황을 md로 기록"을 요청함 — 이 문서가 그 기록이다. **다음 세션 시작 시 Phase 5 진행 여부를 다시 확인할 것.**
 
 ---
 
-## 9. 재개 시 체크리스트
+## 10. Phase 3: 이메일 디자인 (API 비용 없이 반복 작업하는 방법)
+
+OpenAI를 매번 호출하지 않고 이메일 디자인만 반복 수정할 수 있도록 도구를 만들어뒀다.
+
+- **Fixture**: `src/lib/email/fixtures/sample-briefing.json` — 실제 DB에 이미 저장돼 있던 완성된 5섹션 결과(2026-07-08, "Fine-Tuning" 주제)를 `composeBriefing()`으로 재조립해서 만든 진짜 데이터. 새 API 호출 없이 만들었음. 콘텐츠 스키마(타입)가 바뀌지 않는 한 계속 재사용 가능.
+- **라이브 프리뷰**: `npm run email:dev` → `http://localhost:3001` (Next dev 서버와 포트 충돌 피하려고 3001 사용). `emails/DailyBriefing.tsx`가 `DailyBriefingEmail` 컴포넌트에 위 fixture를 먹여서 프리뷰한다. 코드 수정하면 핫리로드됨. 최초 실행 시 `@react-email/ui`를 설치할지 물어보는데(대화형 프롬프트), 이미 devDependency로 설치해둬서 다음부터는 안 물어봄.
+- **PDF 추출**: `npm run email:pdf` → `exports/daily-briefing-preview.pdf` (Puppeteer로 실제 이메일 HTML을 그대로 렌더링해서 PDF화, 실제 발송되는 것과 동일한 템플릿/데이터 사용). `exports/`는 gitignore 처리됨 — 로컬 산출물이라 커밋 안 함. Puppeteer는 devDependency, 프로덕션(Vercel)에는 안 들어감.
+- **다크모드**: `DailyBriefingEmail.tsx`에 `color-scheme`/`supported-color-schemes` 메타 + `@media (prefers-color-scheme: dark)` 스타일 블록 추가. `db-body`/`db-heading`/`db-card`/`db-card-title`/`db-field-text`/`db-muted` className을 각 컴포넌트에 훅으로 심어뒀다 (인라인 스타일만으로는 다크모드 오버라이드가 안 되기 때문 — 이메일 클라이언트는 미디어쿼리 기반 `<style>` 블록만 다크모드 대응이 가능).
+
+**다음에 디자인을 더 손보려면**: `npm run email:dev` 켜놓고 `src/lib/email/templates/` 아래 파일들 수정하면서 브라우저에서 바로 확인하면 된다. 다크모드 실물 확인은 브라우저 프리뷰로는 안 되니(실제 이메일 클라이언트 다크모드 필요), 필요하면 실제 발송 1번으로 검증.
+
+---
+
+## 11. 재개 시 체크리스트
 
 1. `git pull` 불필요 (이미 최신), `git log --oneline -5`로 상태 확인만.
 2. `.env`의 `DRY_RUN=true` 확인(안전 상태 유지 중인지).
 3. 오늘 날짜 기준 `BriefingRun`이 이미 있는지 확인 후 필요시 정리(§6 참고).
-4. Phase 5부터 이어가거나, 사용자가 원하는 다른 작업 확인.
+4. 이메일 디자인 계속하려면 `npm run email:dev`, 아니면 Phase 5나 사용자가 원하는 다른 작업 확인.
