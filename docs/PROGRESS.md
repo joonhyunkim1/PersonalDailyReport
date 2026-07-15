@@ -107,10 +107,24 @@ OpenAI를 매번 호출하지 않고 이메일 디자인만 반복 수정할 수
 
 - **Fixture**: `src/lib/email/fixtures/sample-briefing.json` — 실제 DB에 이미 저장돼 있던 완성된 5섹션 결과(2026-07-08, "Fine-Tuning" 주제)를 `composeBriefing()`으로 재조립해서 만든 진짜 데이터. 새 API 호출 없이 만들었음. 콘텐츠 스키마(타입)가 바뀌지 않는 한 계속 재사용 가능.
 - **라이브 프리뷰**: `npm run email:dev` → `http://localhost:3001` (Next dev 서버와 포트 충돌 피하려고 3001 사용). `emails/DailyBriefing.tsx`가 `DailyBriefingEmail` 컴포넌트에 위 fixture를 먹여서 프리뷰한다. 코드 수정하면 핫리로드됨. 최초 실행 시 `@react-email/ui`를 설치할지 물어보는데(대화형 프롬프트), 이미 devDependency로 설치해둬서 다음부터는 안 물어봄.
-- **PDF 추출**: `npm run email:pdf` → `exports/daily-briefing-preview.pdf` (Puppeteer로 실제 이메일 HTML을 그대로 렌더링해서 PDF화, 실제 발송되는 것과 동일한 템플릿/데이터 사용). `exports/`는 gitignore 처리됨 — 로컬 산출물이라 커밋 안 함. Puppeteer는 devDependency, 프로덕션(Vercel)에는 안 들어감.
+- **PDF 추출(디자인 검토용)**: `npm run email:pdf` → `exports/daily-briefing-preview.pdf` (Puppeteer로 실제 이메일 HTML을 그대로 렌더링해서 PDF화). `exports/`는 gitignore 처리됨 — 로컬 산출물이라 커밋 안 함.
 - **다크모드**: `DailyBriefingEmail.tsx`에 `color-scheme`/`supported-color-schemes` 메타 + `@media (prefers-color-scheme: dark)` 스타일 블록 추가. `db-body`/`db-heading`/`db-card`/`db-card-title`/`db-field-text`/`db-muted` className을 각 컴포넌트에 훅으로 심어뒀다 (인라인 스타일만으로는 다크모드 오버라이드가 안 되기 때문 — 이메일 클라이언트는 미디어쿼리 기반 `<style>` 블록만 다크모드 대응이 가능).
 
 **다음에 디자인을 더 손보려면**: `npm run email:dev` 켜놓고 `src/lib/email/templates/` 아래 파일들 수정하면서 브라우저에서 바로 확인하면 된다. 다크모드 실물 확인은 브라우저 프리뷰로는 안 되니(실제 이메일 클라이언트 다크모드 필요), 필요하면 실제 발송 1번으로 검증.
+
+### 10.1 사용자 피드백으로 조정된 디자인 (2026-07-15)
+
+- 헤더: 이모지 제거, "Daily Briefing"을 세리프체(Georgia)로 중앙에 크게, 날짜는 우측 상단에 작게.
+- TL;DR 요약 박스: 디자인 통일성 부족 + 실용성 낮다는 피드백으로 **숨김 처리**. 코드는 안 지우고 `DailyBriefingEmail.tsx`의 `const SHOW_TLDR = false` 플래그로 제어 — `true`로 바꾸면 바로 복원됨.
+
+### 10.2 PDF를 실제 발송 이메일에 첨부 (Puppeteer가 이제 진짜 dependency)
+
+- `src/lib/pdf/renderBriefingPdf.ts`: 실제 발송되는 것과 완전히 동일한 `DailyBriefingEmail` 컴포넌트를 렌더링해서 PDF로 만듦(파일명 `Daily-Briefing-{날짜}.pdf`, PDF 안에도 날짜가 이미 헤더에 표시됨).
+- `src/lib/email/send.ts`의 `sendBriefingEmail()`이 이제 `attachment` 파라미터를 받아 Resend `attachments`로 전달.
+- `route.ts`에서 `DRY_RUN=false`일 때만 PDF를 만들어 첨부. **PDF 생성이 실패해도 이메일 발송 자체는 절대 막지 않음** (try/catch로 감싸고 실패 시 첨부 없이 발송 — fail-soft 원칙 유지).
+- **주의**: 이제 `puppeteer`가 실제 발송 경로에서 쓰이므로 `dependencies`로 옮겨뒀음(예전엔 dev tool 전용이라 devDependencies였음).
+- **Vercel 배포 시 반드시 재검토할 것**: 지금은 로컬 dev 서버 기준으로만 테스트함. `puppeteer`가 번들하는 전체 Chromium은 Vercel 서버리스 함수 크기 제한에 걸릴 가능성이 높음 — 배포 직전에 `puppeteer` → `puppeteer-core` + `@sparticuz/chromium` (서버리스/Lambda 전용 경량 Chromium) 조합으로 교체 필요. `renderBriefingPdf.ts`에 이 내용 주석으로 남겨둠.
+- 검증 방법: fixture 데이터로 `renderBriefingEmail` + `renderBriefingPdf` + `sendBriefingEmail`을 직접 호출하는 임시 스크립트로 실제 Resend 발송까지 확인함 (OpenAI 비용 0원, Resend만 사용) — 스크립트는 테스트 후 삭제, 저장소에는 없음.
 
 ---
 

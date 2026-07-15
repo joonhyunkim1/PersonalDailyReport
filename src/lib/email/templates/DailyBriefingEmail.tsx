@@ -1,11 +1,13 @@
 import {
   Body,
+  Column,
   Container,
   Head,
   Heading,
   Hr,
   Html,
   Preview,
+  Row,
   Section,
   Text,
 } from "@react-email/components";
@@ -36,6 +38,11 @@ const DARK_MODE_STYLE = `
 }
 `;
 
+// TL;DR summary box: disabled per user feedback (2026-07-15) — inconsistent
+// with the rest of the design and not useful in practice. Kept in code
+// (not deleted) in case it's revisited later; flip to true to re-enable.
+const SHOW_TLDR = false;
+
 export function DailyBriefingEmail({ briefing }: { briefing: BriefingJSON }) {
   return (
     <Html>
@@ -50,24 +57,50 @@ export function DailyBriefingEmail({ briefing }: { briefing: BriefingJSON }) {
         style={{ backgroundColor: "#f3f4f6", fontFamily: "Helvetica, Arial, sans-serif" }}
       >
         <Container style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 16px" }}>
-          <Heading as="h1" className="db-heading" style={{ fontSize: "20px", color: "#111827" }}>
-            🧠 Daily Briefing — {briefing.dateLabel}
-          </Heading>
+          <Row>
+            <Column />
+            <Column align="right">
+              <Text
+                className="db-muted"
+                style={{ fontSize: "12px", color: "#9ca3af", margin: 0 }}
+              >
+                {briefing.dateLabel}
+              </Text>
+            </Column>
+          </Row>
 
-          <Section
+          <Heading
+            as="h1"
+            className="db-heading"
             style={{
-              backgroundColor: "#111827",
-              borderRadius: "8px",
-              padding: "16px 20px",
-              marginBottom: "20px",
+              textAlign: "center",
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontSize: "28px",
+              fontWeight: 700,
+              letterSpacing: "0.3px",
+              color: "#111827",
+              margin: "4px 0 24px 0",
             }}
           >
-            {briefing.tldr.map((line, i) => (
-              <Text key={i} style={{ color: "#f9fafb", fontSize: "14px", margin: "0 0 6px 0" }}>
-                • {line}
-              </Text>
-            ))}
-          </Section>
+            Daily Briefing
+          </Heading>
+
+          {SHOW_TLDR && (
+            <Section
+              style={{
+                backgroundColor: "#111827",
+                borderRadius: "8px",
+                padding: "16px 20px",
+                marginBottom: "20px",
+              }}
+            >
+              {briefing.tldr.map((line, i) => (
+                <Text key={i} style={{ color: "#f9fafb", fontSize: "14px", margin: "0 0 6px 0" }}>
+                  • {line}
+                </Text>
+              ))}
+            </Section>
+          )}
 
           <SectionCard emoji="🧩" title="오늘의 코딩테스트" accentColor="#2563eb">
             <CodingTestSection content={briefing.sections.codingTest} />

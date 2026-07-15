@@ -7,6 +7,7 @@ import { composeBriefing } from "@/lib/orchestrator/composer";
 import { renderBriefingEmail } from "@/lib/email/render";
 import { sendBriefingEmail } from "@/lib/email/send";
 import { getKstDateAsUtcMidnight, getKstDateLabel } from "@/lib/date";
+import { pdfFilenameFor, renderBriefingPdf } from "@/lib/pdf/renderBriefingPdf";
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -59,7 +60,18 @@ export async function POST(request: NextRequest) {
 
     let messageId: string | null = null;
     if (!env.DRY_RUN) {
-      const sendResult = await sendBriefingEmail(email);
+      let attachment: { filename: string; content: Buffer } | undefined;
+      try {
+        attachment = {
+          filename: pdfFilenameFor(briefing),
+          content: await renderBriefingPdf(briefing),
+        };
+      } catch (pdfError) {
+        // PDF attachment is a nice-to-have — never block the email over it.
+        console.error("[cron/daily-briefing] PDF render failed, sending without attachment:", pdfError);
+      }
+
+      const sendResult = await sendBriefingEmail(email, attachment);
       messageId = sendResult.messageId;
     } else {
       console.log(
