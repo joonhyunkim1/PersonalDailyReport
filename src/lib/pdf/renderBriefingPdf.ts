@@ -1,18 +1,34 @@
 import { render } from "@react-email/render";
-import puppeteer from "puppeteer";
 import { DailyBriefingEmail } from "@/lib/email/templates/DailyBriefingEmail";
 import type { BriefingJSON } from "@/types/briefing";
 
 // Renders the same email component actually sent, as a PDF, so the
-// attachment matches the email 1:1. Uses full `puppeteer` (bundled
-// Chromium) — fine for local dev and Vercel's Node runtime today, but if
-// this hits serverless size/cold-start limits after deploying, swap to
-// `puppeteer-core` + `@sparticuz/chromium` (the standard combo for
-// running headless Chrome on Vercel/Lambda).
+// attachment matches the email 1:1.
+//
+// Full `puppeteer` (bundled Chromium) is fine for local dev, but its ~300MB
+// Chromium download doesn't fit Vercel's serverless deployment size limits.
+// On Vercel (`process.env.VERCEL` is set automatically), we instead launch
+// `puppeteer-core` against `@sparticuz/chromium`'s serverless-optimized
+// binary — the standard combo for headless Chrome on Vercel/Lambda.
+async function launchBrowser() {
+  if (process.env.VERCEL) {
+    const chromium = (await import("@sparticuz/chromium")).default;
+    const { launch } = await import("puppeteer-core");
+    return launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: "shell",
+    });
+  }
+
+  const { launch } = await import("puppeteer");
+  return launch();
+}
+
 export async function renderBriefingPdf(briefing: BriefingJSON): Promise<Buffer> {
   const html = await render(DailyBriefingEmail({ briefing }));
 
-  const browser = await puppeteer.launch();
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load" });

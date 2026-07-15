@@ -10,6 +10,11 @@ import { getKstDateAsUtcMidnight, getKstDateLabel } from "@/lib/date";
 import { pdfFilenameFor, renderBriefingPdf } from "@/lib/pdf/renderBriefingPdf";
 import { logger } from "@/lib/logger";
 
+// The full pipeline (5 OpenAI-backed sections incl. two-pass web_search,
+// plus a headless-Chromium PDF render) took up to ~95s in local testing;
+// 300s is the max the Vercel Hobby plan allows, so we ask for all of it.
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
