@@ -1,6 +1,6 @@
 # 진행 상황 (Progress Log)
 
-> 마지막 업데이트: 2026-07-15
+> 마지막 업데이트: 2026-07-15 (Vercel 최초 배포까지 진행, 아래 §14 참고)
 > 목적: 다음 세션에서 컨텍스트 없이도 바로 이어서 작업할 수 있도록 현재 상태를 기록한다.
 > 설계 배경/원 설계는 `docs/DESIGN.md` 참고 (단, 아래 §2 변경사항 이후로는 이 문서가 더 최신 상태다).
 
@@ -20,7 +20,9 @@
 | 4 | 중복방지 + 전공지식 수준별(BASIC→INTERMEDIATE→ADVANCED) 진행 로직 | `dd9aabf` |
 | 3 | 이메일 디자인 도구(fixture/프리뷰서버/PDF 추출) + 다크모드 대응 | `0bf0c2d` |
 | 3 | 헤더 재디자인(이모지 제거/세리프 중앙정렬/날짜 우측상단), TL;DR 숨김, PDF 첨부 발송 | `a2e063a` |
-| 5 | 재시도+Fallback, 구조화 로깅, GitHub Actions Watchdog | 이번 세션 (아래 §12 참고) |
+| 5 | 재시도+Fallback, 구조화 로깅, GitHub Actions Watchdog | `580f1e9` |
+| 배포 | Puppeteer 서버리스 대응(`puppeteer-core`+`@sparticuz/chromium`) | `11e464c` |
+| 배포 | Vercel 프로젝트 생성 + GitHub 연동 + 환경변수 설정 + 최초 배포 성공 | (git 커밋 아님, Vercel 쪽 작업) |
 
 현재 `main` 브랜치는 로컬/원격(`origin/main`) 완전히 동기화된 상태, working tree clean.
 
@@ -99,8 +101,8 @@
 
 - **Phase 5: 신뢰성 강화** — **완료.** 아래 §12 참고.
 - **Phase 3: 이메일 디자인 완성도** — **완료(사용자 컨펌 받음).** 아래 §10 참고.
-- **실제 Vercel 배포** — 아직 안 함. §10.2의 Puppeteer 서버리스 이슈가 배포 시 첫 블로커가 될 것.
-- **Phase 6: 실사용 검증** — 2주 이상 실제 매일 수신 후 톤/분량 튜닝. 배포 이후에나 의미 있음.
+- **실제 Vercel 배포** — **최초 배포까지 완료, 검증은 미완료.** 아래 §14 참고 — **다음 세션에서 여기부터 이어가면 됨.**
+- **Phase 6: 실사용 검증** — 2주 이상 실제 매일 수신 후 톤/분량 튜닝. 배포 검증 이후에나 의미 있음.
 
 ---
 
@@ -141,9 +143,40 @@ OpenAI를 매번 호출하지 않고 이메일 디자인만 반복 수정할 수
 
 ---
 
-## 13. 재개 시 체크리스트
+## 14. Vercel 배포 (2026-07-15, 진행 중 — 다음 세션에서 이어갈 것)
+
+### 완료된 것
+
+- Vercel CLI(`npx vercel`)를 Personal Access Token으로 non-interactive 인증해서 진행함. 토큰은 `.env`의 `VERCEL_TOKEN`에 저장(앱 코드에서는 안 읽음, 배포 작업용 CLI 인증 전용 — git에는 물론 안 올라감).
+- `vercel link --yes --project=daily-briefing-app`으로 새 프로젝트 생성. 주의: 디렉터리명 `DaiRepo`가 대문자를 포함해서 기본 프로젝트명으로 못 씀 → `--project` 옵션으로 소문자 이름을 명시해야 했음.
+- **GitHub 저장소가 자동으로 연결됨** (`joonhyunkim1/PersonalDailyReport`) → 앞으로 `main`에 push하면 Vercel이 자동으로 재배포함.
+- Vercel 프로젝트(`da-bri` 팀 스코프의 `daily-briefing-app`)에 production 환경변수 6개 전부 설정 완료: `DATABASE_URL`, `OPENAI_API_KEY`, `RESEND_API_KEY`, `RECIPIENT_EMAIL`, `CRON_SECRET`(로컬과 다른 새 강력한 값으로 생성함), `DRY_RUN`("true"로 설정 — 아래 이유 참고).
+- `vercel --prod --yes`로 최초 배포 성공. 빌드 로그 확인함 — 정상적으로 `next build` 통과, 라우트(`/api/health`, `/api/cron/daily-briefing`) 정상 인식됨.
+- **배포된 프로덕션 URL**: `https://daily-briefing-app-green.vercel.app` (alias) / 최초 배포 시점 URL은 `https://daily-briefing-bm2m6wbha-da-bri.vercel.app`. Vercel 대시보드에서 최신 alias 확인 가능.
+
+### DRY_RUN을 "true"로 설정해둔 이유
+
+Vercel 서버리스 환경은 로컬과 다르기 때문에(특히 `@sparticuz/chromium` 기반 PDF 생성 부분은 로컬에서 아예 테스트가 불가능했음 — Windows 로컬 환경은 항상 `puppeteer`쪽 분기를 타서 서버리스 분기는 한 번도 실행된 적 없음), 실제 이메일이 자동으로 나가기 전에 먼저 배포된 환경에서 안전하게 검증부터 해야 한다. 그래서 프로덕션 `DRY_RUN`을 일부러 `"true"`로 시작함.
+
+### 다음 세션에서 이어서 할 것 (중요, 순서대로)
+
+1. **`https://daily-briefing-app-green.vercel.app/api/health`를 호출**해서 배포된 앱이 DB(Neon)에 정상 연결되는지 확인. (여기서 중단됨 — 이 curl 명령을 실행하려던 중 사용자가 "내일 하자"고 해서 아직 안 함.)
+2. **`https://daily-briefing-app-green.vercel.app/api/cron/daily-briefing`을 `Authorization: Bearer <프로덕션 CRON_SECRET>` 헤더로 직접 호출**해서:
+   - Puppeteer(`@sparticuz/chromium`) 기반 PDF 생성이 Vercel 서버리스 환경에서 실제로 동작하는지 (이게 이번 배포의 가장 큰 리스크 지점 — 로컬에서 검증 못 한 부분).
+   - 전체 파이프라인이 300초 제한 안에 끝나는지.
+   - DRY_RUN=true이므로 실제 발송은 안 되고 로그로만 확인.
+
+   프로덕션 `CRON_SECRET` 값은 이 세션에서 생성했지만 대화 기록에는 평문으로 남기지 않음 — Vercel 대시보드(Settings → Environment Variables)에서 `CRON_SECRET` 값을 확인하거나, `npx vercel env pull .env.production --environment=production --token=<VERCEL_TOKEN>`으로 받아올 수 있음.
+3. 1~2번이 성공하면 **프로덕션 `DRY_RUN`을 `"false"`로 변경**(`vercel env rm DRY_RUN production` 후 `vercel env add DRY_RUN production --value "false" --yes`)하고 재배포.
+4. **GitHub Actions Watchdog 활성화**: 저장소 Settings → Secrets and variables → Actions에 `SITE_URL` = `https://daily-briefing-app-green.vercel.app` 추가. (`.github/workflows/watchdog.yml` 참고, 지금은 이 시크릿이 없어서 항상 스킵됨.)
+5. Vercel Cron의 스케줄 정확도가 ±59분이라는 점 감안하고, 다음날 아침 실제로 08:00~08:59 KST 사이에 이메일이 오는지 확인.
+6. (선택) `DATABASE_URL`을 Neon의 `-pooler` 엔드포인트로 바꾸는 것도 고려 가능 — 지금은 direct 연결이고 하루 1회 호출이라 문제는 없지만, 서버리스 모범 사례로는 pooled 연결이 권장됨.
+
+---
+
+## 15. 재개 시 체크리스트
 
 1. `git pull` 불필요 (이미 최신), `git log --oneline -5`로 상태 확인만.
-2. `.env`의 `DRY_RUN=true` 확인(안전 상태 유지 중인지).
+2. `.env`의 `DRY_RUN=true` 확인(안전 상태 유지 중인지) — 로컬 기준. 프로덕션(Vercel)의 `DRY_RUN`도 아직 `"true"`임.
 3. 오늘 날짜 기준 `BriefingRun`이 이미 있는지 확인 후 필요시 정리(§6 참고).
-4. Phase 3/5 모두 완료됨 — 다음은 실제 Vercel 배포(§8 참고, Puppeteer 이슈 먼저 해결) 또는 사용자가 원하는 다른 작업 확인.
+4. **§14 "다음 세션에서 이어서 할 것" 1번부터 바로 시작** — 배포된 URL의 `/api/health` 확인부터.
