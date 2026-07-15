@@ -8,6 +8,7 @@ import { renderBriefingEmail } from "@/lib/email/render";
 import { sendBriefingEmail } from "@/lib/email/send";
 import { getKstDateAsUtcMidnight, getKstDateLabel } from "@/lib/date";
 import { pdfFilenameFor, renderBriefingPdf } from "@/lib/pdf/renderBriefingPdf";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -19,12 +20,7 @@ export async function POST(request: NextRequest) {
   const dateLabel = getKstDateLabel(now);
   const runDate = getKstDateAsUtcMidnight(now);
 
-  console.log(
-    "[cron/daily-briefing] triggered at",
-    now.toISOString(),
-    "for KST date",
-    dateLabel
-  );
+  logger.info("cron triggered", { triggeredAt: now.toISOString(), dateLabel });
 
   const user = await prisma.user.upsert({
     where: { email: env.RECIPIENT_EMAIL },
@@ -37,10 +33,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (existingRun?.status === "SUCCESS") {
-    console.log(
-      "[cron/daily-briefing] already sent today, skipping:",
-      existingRun.id
-    );
+    logger.info("already sent today, skipping", { runId: existingRun.id });
     return NextResponse.json({ runId: existingRun.id, status: "ALREADY_SENT" });
   }
 
@@ -68,16 +61,15 @@ export async function POST(request: NextRequest) {
         };
       } catch (pdfError) {
         // PDF attachment is a nice-to-have — never block the email over it.
-        console.error("[cron/daily-briefing] PDF render failed, sending without attachment:", pdfError);
+        logger.error("PDF render failed, sending without attachment", {
+          error: pdfError instanceof Error ? pdfError.message : String(pdfError),
+        });
       }
 
       const sendResult = await sendBriefingEmail(email, attachment);
       messageId = sendResult.messageId;
     } else {
-      console.log(
-        "[cron/daily-briefing] DRY_RUN active, skipping actual send. Subject:",
-        email.subject
-      );
+      logger.info("DRY_RUN active, skipping actual send", { subject: email.subject });
     }
 
     const hasFailure = sectionResults.some((r) => r.result.status !== "SUCCESS");
@@ -115,11 +107,14 @@ export async function POST(request: NextRequest) {
         : []),
     ]);
 
-    console.log(
-      "[cron/daily-briefing] run complete:",
-      run.id,
-      hasFailure ? "PARTIAL" : "SUCCESS"
-    );
+    logger.info("run complete", {
+      runId: run.id,
+      status: hasFailure ? "PARTIAL" : "SUCCESS",
+      costUsd: totalCostUsd,
+      degradedSections: sectionResults
+        .filter((r) => r.result.status !== "SUCCESS")
+        .map((r) => r.type),
+    });
 
     return NextResponse.json({
       runId: run.id,
@@ -128,7 +123,10 @@ export async function POST(request: NextRequest) {
       costUsd: totalCostUsd,
     });
   } catch (error) {
-    console.error("[cron/daily-briefing] pipeline failed:", error);
+    logger.error("pipeline failed", {
+      runId: run.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
     await prisma.briefingRun.update({
       where: { id: run.id },
       data: {

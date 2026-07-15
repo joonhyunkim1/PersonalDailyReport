@@ -6,7 +6,7 @@
 
 ---
 
-## 1. 완료된 작업 (Phase 0~4, 그리고 Phase 3 진행 중)
+## 1. 완료된 작업 (Phase 0~5)
 
 | Phase | 내용 | 커밋 |
 |---|---|---|
@@ -18,7 +18,9 @@
 | 2 | AI_NEWS/JOB_MARKET/SEMICONDUCTOR/STOCK_MARKET 실제 생성 (2-pass web_search) | `04ab52f` |
 | 2.5 | 사용자 피드백 반영: 섹션 통합·축소 (아래 §2 참고) | `2306022` |
 | 4 | 중복방지 + 전공지식 수준별(BASIC→INTERMEDIATE→ADVANCED) 진행 로직 | `dd9aabf` |
-| 3 | 이메일 디자인 도구(fixture/프리뷰서버/PDF 추출) + 다크모드 대응 | 이번 세션 |
+| 3 | 이메일 디자인 도구(fixture/프리뷰서버/PDF 추출) + 다크모드 대응 | `0bf0c2d` |
+| 3 | 헤더 재디자인(이모지 제거/세리프 중앙정렬/날짜 우측상단), TL;DR 숨김, PDF 첨부 발송 | `a2e063a` |
+| 5 | 재시도+Fallback, 구조화 로깅, GitHub Actions Watchdog | 이번 세션 (아래 §12 참고) |
 
 현재 `main` 브랜치는 로컬/원격(`origin/main`) 완전히 동기화된 상태, working tree clean.
 
@@ -95,9 +97,10 @@
 
 `docs/DESIGN.md` §12 로드맵 기준:
 
-- **Phase 5: 신뢰성 강화** — 모듈 실패 시 재시도/fallback, Watchdog(크론이 조용히 실패하는 것 감지), 구조화 로깅, `DRY_RUN` 모드는 이미 있음.
-- **Phase 3: 이메일 디자인 완성도** — **진행 중.** 아래 §10 참고.
-- **Phase 6: 실사용 검증** — 2주 이상 실제 매일 수신 후 톤/분량 튜닝.
+- **Phase 5: 신뢰성 강화** — **완료.** 아래 §12 참고.
+- **Phase 3: 이메일 디자인 완성도** — **완료(사용자 컨펌 받음).** 아래 §10 참고.
+- **실제 Vercel 배포** — 아직 안 함. §10.2의 Puppeteer 서버리스 이슈가 배포 시 첫 블로커가 될 것.
+- **Phase 6: 실사용 검증** — 2주 이상 실제 매일 수신 후 톤/분량 튜닝. 배포 이후에나 의미 있음.
 
 ---
 
@@ -128,9 +131,19 @@ OpenAI를 매번 호출하지 않고 이메일 디자인만 반복 수정할 수
 
 ---
 
-## 11. 재개 시 체크리스트
+## 12. Phase 5: 신뢰성 강화
+
+- **재시도 + Fallback**: `src/lib/orchestrator/retry.ts`의 `withRetryFallback()`이 모든 모듈 호출을 감싼다. 실패 → 2초 대기 → 1회 재시도 → 그래도 실패하면 `FALLBACK` 상태 + 섹션별 placeholder 콘텐츠(`src/lib/modules/fallbacks.ts`)로 대체. 이 래퍼는 절대 throw하지 않으므로 파이프라인은 항상 끝까지 실행되고 이메일은 항상 나간다.
+- **INTERVIEW 단락(short-circuit) 처리**: TECH_CONCEPT이 FALLBACK이면 INTERVIEW는 OpenAI를 아예 호출하지 않고 바로 FALLBACK으로 처리 (placeholder 주제로 면접 질문을 지어내는 건 의미 없고 비용 낭비이므로).
+- **구조화 로깅**: `src/lib/logger.ts` — JSON 한 줄짜리 로그(`{timestamp, level, message, ...meta}`). `route.ts`/`retry.ts`/`health/route.ts`의 `console.log`를 이걸로 교체. Vercel 로그 뷰어에서 검색/필터링하기 쉬워짐.
+- **Watchdog**: `.github/workflows/watchdog.yml` — 매일 23:30 UTC(00:30 KST, 발송 30분 후)에 `/api/health`를 확인해서 오늘자 성공 run이 없으면 워크플로우를 실패시킨다. GitHub이 스케줄 워크플로우 실패 시 저장소 소유자에게 자동으로 메일을 보내주므로, 별도 모니터링 서비스 없이 이게 곧 알림 역할을 한다. **아직 `SITE_URL` 시크릿이 없어서 지금은 항상 스킵됨** — Vercel 배포 후 저장소 Settings → Secrets에 `SITE_URL`을 추가해야 실제로 동작 시작.
+- **검증**: `withRetryFallback()`을 성공/1회 실패 후 성공/영구 실패 3가지 케이스로 격리 테스트(OpenAI 비용 없음, 타이밍/폴백 콘텐츠 정확히 동작 확인). 추가로 fixture의 AI_NEWS/CODING_TEST 섹션을 fallback placeholder로 치환한 뒤 실제 이메일 발송까지 확인해서 placeholder 콘텐츠가 실제 템플릿에서 깨지지 않고 렌더링되는 것도 확인함 (역시 OpenAI 비용 없음, Resend만 사용).
+
+---
+
+## 13. 재개 시 체크리스트
 
 1. `git pull` 불필요 (이미 최신), `git log --oneline -5`로 상태 확인만.
 2. `.env`의 `DRY_RUN=true` 확인(안전 상태 유지 중인지).
 3. 오늘 날짜 기준 `BriefingRun`이 이미 있는지 확인 후 필요시 정리(§6 참고).
-4. 이메일 디자인 계속하려면 `npm run email:dev`, 아니면 Phase 5나 사용자가 원하는 다른 작업 확인.
+4. Phase 3/5 모두 완료됨 — 다음은 실제 Vercel 배포(§8 참고, Puppeteer 이슈 먼저 해결) 또는 사용자가 원하는 다른 작업 확인.
