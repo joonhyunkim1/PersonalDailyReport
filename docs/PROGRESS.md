@@ -128,7 +128,7 @@ OpenAI를 매번 호출하지 않고 이메일 디자인만 반복 수정할 수
 - `src/lib/email/send.ts`의 `sendBriefingEmail()`이 이제 `attachment` 파라미터를 받아 Resend `attachments`로 전달.
 - `route.ts`에서 `DRY_RUN=false`일 때만 PDF를 만들어 첨부. **PDF 생성이 실패해도 이메일 발송 자체는 절대 막지 않음** (try/catch로 감싸고 실패 시 첨부 없이 발송 — fail-soft 원칙 유지).
 - **주의**: 이제 `puppeteer`가 실제 발송 경로에서 쓰이므로 `dependencies`로 옮겨뒀음(예전엔 dev tool 전용이라 devDependencies였음).
-- **Vercel 배포 시 반드시 재검토할 것**: 지금은 로컬 dev 서버 기준으로만 테스트함. `puppeteer`가 번들하는 전체 Chromium은 Vercel 서버리스 함수 크기 제한에 걸릴 가능성이 높음 — 배포 직전에 `puppeteer` → `puppeteer-core` + `@sparticuz/chromium` (서버리스/Lambda 전용 경량 Chromium) 조합으로 교체 필요. `renderBriefingPdf.ts`에 이 내용 주석으로 남겨둠.
+- ~~Vercel 배포 시 반드시 재검토할 것~~ → **완료됨 (§14 참고).** `renderBriefingPdf.ts`가 `process.env.VERCEL` 여부로 분기해서, 로컬은 기존 `puppeteer`, Vercel에서는 `puppeteer-core` + `@sparticuz/chromium`을 쓰도록 이미 수정했다(커밋 `11e464c`). 다만 서버리스 분기는 로컬에서 실행된 적이 없어서 **실제 동작 검증은 아직 안 됨** — §14의 "다음 세션에서 이어서 할 것" 참고.
 - 검증 방법: fixture 데이터로 `renderBriefingEmail` + `renderBriefingPdf` + `sendBriefingEmail`을 직접 호출하는 임시 스크립트로 실제 Resend 발송까지 확인함 (OpenAI 비용 0원, Resend만 사용) — 스크립트는 테스트 후 삭제, 저장소에는 없음.
 
 ---
