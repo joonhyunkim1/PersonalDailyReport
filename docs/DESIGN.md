@@ -508,7 +508,9 @@ DaiRepo/
 
 MVP는 사용자 대면 API가 없다(로그인/UI 없음). 내부용 API만 존재한다.
 
-### 5.1 `POST /api/cron/daily-briefing`
+### 5.1 `GET /api/cron/daily-briefing`
+
+> **구현 노트 (배포 후 확정)**: 최초 설계는 `POST`였으나, Vercel Cron은 항상 **GET**으로만 엔드포인트를 호출한다(공식 문서 확인). `POST`로만 구현했다가 실제 배포 후 자동 실행이 전부 조용히 405로 실패하는 버그를 겪었다 — 반드시 `GET`으로 구현할 것.
 
 - **트리거**: Vercel Cron
 - **인증**: `Authorization: Bearer ${CRON_SECRET}` 헤더 필수 (Vercel Cron이 자동 첨부하는 방식 활용 + 자체 검증 이중화)

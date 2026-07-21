@@ -15,7 +15,11 @@ import { logger } from "@/lib/logger";
 // 300s is the max the Vercel Hobby plan allows, so we ask for all of it.
 export const maxDuration = 300;
 
-export async function POST(request: NextRequest) {
+// Vercel Cron always invokes via GET (https://vercel.com/docs/cron-jobs:
+// "Vercel makes an HTTP GET request..."). A POST-only handler here was
+// silently 405-ing every scheduled invocation — verified via the
+// vercel-cron/1.0 user agent never appearing as a successful run.
+export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
