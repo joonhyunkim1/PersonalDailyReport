@@ -183,12 +183,41 @@ outputFileTracingIncludes: {
 - ✅ `DRY_RUN=false`로 전환 후 실제 발송 + PDF 첨부까지 확인 (위 버그 수정 후).
 - ✅ 이제 프로덕션 `DRY_RUN`은 **`"false"`로 유지** — 로컬 개발용 안전장치(`.env`의 `DRY_RUN=true`)와는 별개로, 프로덕션은 실제 자동 발송이 목적이므로 계속 `false`로 둠. (로컬 `.env`는 계속 `true` 유지 중.)
 
-### 아직 안 한 것 / 확인 필요한 것
+### (선택, 급하지 않음) 남은 사소한 것
 
-1. **GitHub Actions Watchdog 시크릿**: 저장소 Settings → Secrets and variables → Actions에 `SITE_URL` = `https://daily-briefing-app-green.vercel.app` 추가 필요 (`.github/workflows/watchdog.yml` 참고). 사용자에게 직접 안내함 — 완료 여부 다음 세션에서 확인.
-2. Vercel Cron의 스케줄 정확도가 ±59분(Hobby 플랜 특성, §"Vercel 배포 설명" 대화 참고)이라는 점 감안하고, **다음날 아침 08:00~08:59 KST 사이에 실제로 cron이 자동 발송하는지** 확인 필요 — 지금까지는 전부 수동 curl 호출로만 검증했고, Vercel Cron 스케줄러 자체가 실제로 트리거하는 건 아직 미확인.
-3. (선택, 급하지 않음) `DATABASE_URL`을 Neon의 `-pooler` 엔드포인트로 바꾸는 것도 고려 가능 — 지금은 direct 연결이고 하루 1회 호출이라 문제는 없음.
-4. 오늘(2026-07-20) 테스트로 실제 이메일이 이미 1통 발송됐으므로, `BriefingRun`에 오늘자 `SUCCESS` 기록이 있음 — 내일 새벽 Vercel Cron이 자동으로 걸리면 정상적으로 새 run이 생성될 것(날짜가 바뀌므로).
+- `DATABASE_URL`을 Neon의 `-pooler` 엔드포인트로 바꾸는 것도 고려 가능 — 지금은 direct 연결이고 하루 1회 호출이라 문제는 없음.
+
+---
+
+## 16. 치명적 버그: Cron 라우트가 POST라서 자동 실행이 단 한 번도 안 되고 있었음 (2026-07-21 발견/수정)
+
+### 무슨 일이 있었나
+
+2026-07-21 아침, GitHub에서 **"Daily Briefing Watchdog: All jobs have failed"** 알림 메일을 받음 (사용자가 스크린샷으로 전달). 조사 순서:
+
+1. `/api/health` 확인 → `lastSuccessfulRunDate`가 여전히 `2026-07-20`(전날 수동 테스트 날짜)에 멈춰있음. 오늘자 성공 기록이 없음.
+2. `npx vercel logs ... --since 24h` 확인 → **지난 24시간 동안 `/api/cron/daily-briefing`에 대한 호출 기록이 전혀 없었음** (내가 수동으로 `curl -X POST`한 것 말고는 진짜 Cron 호출이 하나도 없었음).
+3. `npx vercel crons ls`로 확인 → Cron 자체는 `0 23 * * *`로 정상 등록되어 있었음. 즉 "등록은 됐는데 실행이 안 되는" 상태.
+4. Vercel 공식 문서(`/docs/cron-jobs`)를 확인한 결과 결정적 문장 발견:
+   > "To trigger a cron job, Vercel makes an HTTP **GET** request to your project's production deployment URL."
+
+**그런데 우리 라우트는 `export async function POST(...)`로만 구현되어 있었다.** Next.js는 구현 안 된 HTTP 메서드로 요청이 오면 405를 반환하므로, **배포된 이후 지금까지 Vercel의 실제 Cron 스케줄러가 호출을 시도할 때마다 전부 405로 실패하고 있었던 것**. 지금까지 "성공"으로 확인했던 모든 기록은 전부 내가 `curl -X POST`로 수동 호출한 테스트였지, 실제 자동 스케줄러가 성공한 적은 **단 한 번도 없었음**.
+
+### 수정
+
+`route.ts`의 `export async function POST` → `export async function GET`으로 변경 (커밋 `accddc0`). 재배포 후 `curl -X GET`으로 재검증 — 정상 발송 + PDF 첨부 확인, `/api/health`의 `lastSuccessfulRunDate`가 `2026-07-21`(오늘)로 갱신됨.
+
+### 교훈 (다음에 또 이런 실수 안 하려면)
+
+- **Vercel Cron은 항상 GET이다.** REST 관습상 "액션을 트리거하니 POST가 맞겠지"라고 무의식적으로 판단했던 게 원인 — 플랫폼별 계약을 확인하지 않고 일반 관습을 가정하면 안 됨.
+- 이런 종류의 버그(엔드포인트가 "정상 응답하지만 아무도 호출을 안 하는" 상황)는 **응답 코드/로직만 테스트해서는 절대 못 잡는다** — 반드시 "실제 트리거 주체(여기선 Vercel Cron)가 진짜 우리 코드를 호출하고 있는가"를 로그로 직접 확인해야 함. 수동 curl 테스트는 라우트 로직 검증에는 좋지만, "자동화가 실제로 작동하는가"는 별개로 확인해야 하는 것이었음.
+- Watchdog(§12)이 정확히 이 문제를 잡아내기 위해 만든 안전장치였고, 실제로 첫 실사용에서 바로 제 역할을 함 — 설계가 맞았다는 검증이기도 함.
+
+### 최종 검증 완료 항목 (업데이트)
+
+- ✅ GET 방식으로 실제 발송 + PDF 첨부 확인 (2026-07-21).
+- ⏳ **아직 남은 것**: 이번엔 내가 수동으로 `curl -X GET`을 호출해서 확인한 것이라, **Vercel의 실제 스케줄러가 자동으로 호출하는 것은 아직 못 봤다.** 내일 아침 08:00~08:59 KST 사이에 진짜 자동으로 도착하는지 최종 확인 필요 — 이번엔 GET으로 고쳤으니 될 가능성이 높지만, 100% 확신하려면 자동 발송 1회를 실제로 봐야 함.
+- ⏳ GitHub Actions Watchdog `SITE_URL` 시크릿 설정 — 사용자가 설정 완료했다고 확인함(2026-07-21 세션 중). Watchdog을 다시 수동 실행(`workflow_dispatch`)해서 이번엔 통과하는지 확인 권장.
 
 ---
 
@@ -196,5 +225,5 @@ outputFileTracingIncludes: {
 
 1. `git pull` 불필요 (이미 최신), `git log --oneline -5`로 상태 확인만.
 2. 로컬 `.env`의 `DRY_RUN=true` 확인(로컬 안전 상태). **프로덕션(Vercel)의 `DRY_RUN`은 `"false"`로 유지 중** — 로컬과 다른 값인 게 정상.
-3. §14의 "아직 안 한 것" 1~2번부터 확인: Watchdog 시크릿 설정 여부, 실제 Cron 자동 발송 여부.
+3. **§16부터 확인**: 내일 아침 진짜 자동으로 Cron이 걸렸는지(`/api/health`의 `lastSuccessfulRunDate`가 오늘 날짜로 자동 갱신됐는지, 내가 수동으로 안 건드렸는데도), Watchdog이 정상 통과했는지.
 4. 그 다음은 Phase 6(실사용 검증 — 톤/분량 튜닝) 또는 사용자가 원하는 다른 작업.
