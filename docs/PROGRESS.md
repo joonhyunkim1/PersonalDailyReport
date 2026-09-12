@@ -150,9 +150,9 @@ OpenAI를 매번 호출하지 않고 이메일 디자인만 반복 수정할 수
 
 - Vercel CLI(`npx vercel`)를 Personal Access Token으로 non-interactive 인증해서 진행함. 토큰은 `.env`의 `VERCEL_TOKEN`에 저장(앱 코드에서는 안 읽음, 배포 작업용 CLI 인증 전용 — git에는 물론 안 올라감).
 - `vercel link --yes --project=daily-briefing-app`으로 새 프로젝트 생성. 주의: 디렉터리명 `DaiRepo`가 대문자를 포함해서 기본 프로젝트명으로 못 씀 → `--project` 옵션으로 소문자 이름을 명시해야 했음.
-- **GitHub 저장소가 자동으로 연결됨** (`joonhyunkim1/PersonalDailyReport`) → `main`에 push하면 Vercel이 자동으로 재배포함.
+- **GitHub 저장소가 자동으로 연결됨** → `main`에 push하면 Vercel이 자동으로 재배포함.
 - Vercel 프로젝트(`da-bri` 팀 스코프의 `daily-briefing-app`)에 production 환경변수 6개 설정: `DATABASE_URL`, `OPENAI_API_KEY`, `RESEND_API_KEY`, `RECIPIENT_EMAIL`, `CRON_SECRET`(로컬과 다른 새 강력한 값), `DRY_RUN`.
-- **배포된 프로덕션 URL**: `https://daily-briefing-app-green.vercel.app` (alias — 항상 이 주소를 쓰면 됨, 배포마다 바뀌는 `https://daily-briefing-<hash>-da-bri.vercel.app`는 해당 배포 시점 URL일 뿐).
+- **배포된 프로덕션 URL**: `https://<masked>.vercel.app` (alias — 항상 이 주소를 쓰면 됨, 배포마다 바뀌는 해시 URL은 해당 배포 시점 URL일 뿐).
 
 ### 발견하고 고친 버그: Vercel에서 PDF가 조용히 빠지던 문제
 
