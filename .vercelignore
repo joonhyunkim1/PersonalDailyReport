@@ -1,0 +1,7 @@
+# Vercel CLI 배포(`npx vercel`)는 .gitignore를 따르지 않고 이 파일만 본다.
+# 이 파일이 없으면 로컬 .env(API 키)와 빌드 산출물까지 배포 소스에 올라간다.
+.env*
+/exports
+/.react-email
+/src/generated
+*.tsbuildinfo
