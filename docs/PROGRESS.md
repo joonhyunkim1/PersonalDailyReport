@@ -39,7 +39,21 @@
 - **"취업 정보"(JOB_MARKET)는 일시 중단.** 파이프라인 호출/이메일 렌더링 모두 제외했지만, `src/lib/modules/jobMarket/`, `src/lib/openai/schemas/jobMarket.schema.ts`, `src/lib/email/templates/sections/JobMarketSection.tsx` 파일은 나중에 재사용할 수 있도록 그대로 보존.
 - **코딩테스트는 프로그래머스로 한정.** LeetCode/백준 제외 (`CodingTestSchema.platform`을 `z.literal("프로그래머스")`로 하드 제약).
 
-**현재 실제 활성 섹션은 5개**: CODING_TEST, TECH_CONCEPT, INTERVIEW, AI_NEWS(통합), STOCK_MARKET.
+**현재 실제 활성 섹션은 4개**: CODING_TEST, TECH_CONCEPT, INTERVIEW, AI_NEWS(통합). (2026-09-24 변경, 아래 참고)
+
+### 2026-09-24: 인스타그램 채널(DR_to_Insta) 연동을 위한 변경
+
+- **AI_NEWS 4건 → 6건(min 5/max 6)**, AI 영역 최소 3건 + 반도체/임베디드 최소 2건. 인스타 채널이 하루 4회
+  게시하면서 중복/비AI 항목을 걸러낼 여유분.
+- **AI_NEWS 항목에 필드 추가**: `keyFacts`(원문의 구체적 사실·수치 2~4개), `sourceName`, `sourceUrl`,
+  `publishedDate`. `sourceUrl`은 web_search 응답의 `url_citation` 주석에서 뽑은 목록 안에서만 고르게 해서
+  URL 날조를 막는다 (`researchWithWebSearch`가 `citations`를 함께 반환). 이메일에도 핵심 사실/출처 링크 표시.
+  이전에 저장된 행에는 이 필드가 없으므로 타입에서는 optional.
+- **STOCK_MARKET 일시 중지** (사용자 요청, 삭제 금지): `src/lib/config/sections.ts`의
+  `SECTION_ENABLED.STOCK_MARKET = false`. 파이프라인이 생성 자체를 건너뛰고(비용 없음), composer/이메일은
+  섹션이 없으면 생략한다. `true`로 바꾸면 바로 복구된다.
+- DR_to_Insta는 Neon DB의 `BriefingSection`(AI_NEWS) `contentJson`을 읽기 전용으로 조회한다 —
+  이 JSON 구조를 바꿀 때는 DR_to_Insta의 `sources/dr_source.py`도 같이 확인할 것.
 
 ---
 

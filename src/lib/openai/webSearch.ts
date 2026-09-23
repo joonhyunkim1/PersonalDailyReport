@@ -2,8 +2,16 @@ import { openai, MODELS } from "@/lib/openai/client";
 import { PERSONA_SYSTEM_PROMPT } from "@/lib/config/persona";
 import { estimateCostUsd, WEB_SEARCH_COST_PER_CALL_USD } from "@/lib/config/pricing";
 
+export interface WebCitation {
+  title: string;
+  url: string;
+}
+
 export interface WebSearchPassResult {
   text: string;
+  /** Deduplicated url_citation annotations from the answer — the only URLs
+   * we can trust as real (the structuring pass must not invent any). */
+  citations: WebCitation[];
   tokensInput: number;
   tokensOutput: number;
   costUsd: number;
@@ -35,5 +43,24 @@ export async function researchWithWebSearch(params: {
     estimateCostUsd(MODELS.reasoning, tokensInput, tokensOutput) +
     webSearchCalls * WEB_SEARCH_COST_PER_CALL_USD;
 
-  return { text: response.output_text, tokensInput, tokensOutput, costUsd };
+  const citations = new Map<string, WebCitation>();
+  for (const item of response.output) {
+    if (item.type !== "message") continue;
+    for (const part of item.content) {
+      if (part.type !== "output_text") continue;
+      for (const annotation of part.annotations) {
+        if (annotation.type === "url_citation" && !citations.has(annotation.url)) {
+          citations.set(annotation.url, { title: annotation.title, url: annotation.url });
+        }
+      }
+    }
+  }
+
+  return {
+    text: response.output_text,
+    citations: [...citations.values()],
+    tokensInput,
+    tokensOutput,
+    costUsd,
+  };
 }

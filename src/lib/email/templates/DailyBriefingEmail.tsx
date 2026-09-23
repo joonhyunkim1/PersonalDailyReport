@@ -118,9 +118,11 @@ export function DailyBriefingEmail({ briefing }: { briefing: BriefingJSON }) {
             <AiNewsSection content={briefing.sections.aiNews} />
           </SectionCard>
 
-          <SectionCard emoji="📈" title="미국 증시 브리핑" accentColor="#dc2626">
-            <StockMarketSection content={briefing.sections.stockMarket} />
-          </SectionCard>
+          {briefing.sections.stockMarket && (
+            <SectionCard emoji="📈" title="미국 증시 브리핑" accentColor="#dc2626">
+              <StockMarketSection content={briefing.sections.stockMarket} />
+            </SectionCard>
+          )}
 
           <Hr style={{ margin: "20px 0" }} />
           <Text

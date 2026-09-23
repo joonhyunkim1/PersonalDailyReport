@@ -4,10 +4,12 @@ import { interviewModule } from "@/lib/modules/interview";
 import { aiNewsModule } from "@/lib/modules/aiNews";
 // jobMarketModule: paused (not called) — kept in lib/modules/jobMarket for
 // future reuse. See docs/DESIGN.md section 13.2 (interest customization).
+// stockMarketModule: paused via SECTION_ENABLED (lib/config/sections.ts).
 import { stockMarketModule } from "@/lib/modules/stockMarket";
 import type { ModuleContext, ModuleResult, SectionType } from "@/lib/modules/types";
 import { withRetryFallback } from "@/lib/orchestrator/retry";
 import { FALLBACK_CONTENT } from "@/lib/modules/fallbacks";
+import { SECTION_ENABLED } from "@/lib/config/sections";
 import { logger } from "@/lib/logger";
 import type { InterviewContent, TechConceptContent } from "@/types/briefing";
 
@@ -66,11 +68,13 @@ export async function runPipeline(ctx: ModuleContext): Promise<SectionRunResult[
       FALLBACK_CONTENT.CODING_TEST
     ),
     withRetryFallback(aiNewsModule.type, () => aiNewsModule.generate(ctx), FALLBACK_CONTENT.AI_NEWS),
-    withRetryFallback(
-      stockMarketModule.type,
-      () => stockMarketModule.generate(ctx),
-      FALLBACK_CONTENT.STOCK_MARKET
-    ),
+    SECTION_ENABLED.STOCK_MARKET
+      ? withRetryFallback(
+          stockMarketModule.type,
+          () => stockMarketModule.generate(ctx),
+          FALLBACK_CONTENT.STOCK_MARKET
+        )
+      : null,
   ]);
 
   return [
@@ -78,6 +82,8 @@ export async function runPipeline(ctx: ModuleContext): Promise<SectionRunResult[
     { type: interviewModule.type, result: interviewResult },
     { type: codingTestModule.type, result: codingTestResult },
     { type: aiNewsModule.type, result: aiNewsResult },
-    { type: stockMarketModule.type, result: stockMarketResult },
+    ...(stockMarketResult
+      ? [{ type: stockMarketModule.type, result: stockMarketResult }]
+      : []),
   ];
 }

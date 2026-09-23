@@ -43,7 +43,12 @@ export interface NewsItem {
   whyItMatters: string;
   researcherView: string;
   engineerView: string;
-  sourceUrl?: string;
+  // Added 2026-09-24 (also consumed by the DR_to_Insta Instagram channel).
+  // Optional because AI_NEWS rows stored before then don't have them.
+  keyFacts?: string[];
+  sourceName?: string | null;
+  sourceUrl?: string | null;
+  publishedDate?: string | null;
 }
 
 // "AI / 임베디드 뉴스" — merged from the former separate AI/CV news and
@@ -66,6 +71,7 @@ export interface JobMarketContent {
   items: JobListing[];
 }
 
+// Paused via SECTION_ENABLED (lib/config/sections.ts) — kept for future reuse.
 export interface StockMarketContent {
   summary: string;
   upDownFactors: string;
@@ -78,7 +84,7 @@ export interface BriefingSections {
   techConcept: TechConceptContent;
   interview: InterviewContent;
   aiNews: AiNewsContent;
-  stockMarket: StockMarketContent;
+  stockMarket?: StockMarketContent;
 }
 
 export interface BriefingJSON {

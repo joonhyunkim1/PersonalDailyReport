@@ -31,7 +31,10 @@ export function composeBriefing(
     techConcept: findContent<TechConceptContent>(results, "TECH_CONCEPT"),
     interview: findContent<InterviewContent>(results, "INTERVIEW"),
     aiNews: findContent<AiNewsContent>(results, "AI_NEWS"),
-    stockMarket: findContent<StockMarketContent>(results, "STOCK_MARKET"),
+    // Optional: absent when paused via SECTION_ENABLED (lib/config/sections.ts).
+    stockMarket: results.some((r) => r.type === "STOCK_MARKET")
+      ? findContent<StockMarketContent>(results, "STOCK_MARKET")
+      : undefined,
   };
 
   const tldr = [
